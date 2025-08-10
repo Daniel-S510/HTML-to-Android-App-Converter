@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML to Android App Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .file-drop-area {
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+        }
+        .file-drop-area.drag-over {
+            background-color: #e0f2fe;
+            border-color: #0284c7;
+        }
+        #iconPreview {
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-2xl bg-white rounded-xl shadow-lg p-6 md:p-8">
+        
+        <div class="text-center mb-6">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900">HTML to Android App Converter</h1>
+            <p class="text-gray-600 mt-2">Upload your web files (.html, .css, .js, images) to generate a ready-to-build Android Studio project.</p>
+        </div>
+
+        <!-- Step 1: App Details -->
+        <div class="mb-6">
+            <h2 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Step 1: Configure Your App</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-4">
+                    <div>
+                        <label for="appName" class="block text-sm font-medium text-gray-700 mb-1">App Name</label>
+                        <input type="text" id="appName" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500" placeholder="My Awesome App">
+                    </div>
+                    <div>
+                        <label for="packageName" class="block text-sm font-medium text-gray-700 mb-1">Package Name</label>
+                        <input type="text" id="packageName" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500" placeholder="com.example.myapp">
+                        <p id="package-error" class="text-red-500 text-xs mt-1 hidden">Invalid format. Use 'com.company.appname'.</p>
+                    </div>
+                </div>
+                <div>
+                     <label for="appIcon" class="block text-sm font-medium text-gray-700 mb-1">App Icon (Optional)</label>
+                     <div class="flex items-center space-x-4">
+                        <img id="iconPreview" src="https://placehold.co/96x96/0284c7/FFFFFF?text=Icon" class="w-24 h-24 rounded-lg bg-gray-200" alt="Icon preview">
+                        <label for="appIcon" class="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500">
+                            <span>Upload Icon</span>
+                            <input id="appIcon" name="appIcon" type="file" class="sr-only" accept="image/png, image/jpeg">
+                        </label>
+                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Upload Files -->
+        <div class="mb-6">
+            <h2 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Step 2: Upload Your Project Files</h2>
+            <div id="fileDropArea" class="file-drop-area border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer">
+                <input type="file" id="fileInput" multiple class="hidden">
+                <div id="file-upload-prompt">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <p class="mt-2 text-sm text-gray-600">
+                        <span class="font-semibold text-sky-600">Click to upload</span> or drag and drop
+                    </p>
+                    <p class="text-xs text-gray-500 mt-1">Select your main HTML file and all related assets (CSS, JS, images, etc.)</p>
+                </div>
+                <div id="file-list" class="text-left mt-4 hidden">
+                    <h3 class="font-semibold text-gray-700">Selected Files:</h3>
+                    <ul class="list-disc list-inside text-gray-600 text-sm mt-2 max-h-32 overflow-y-auto"></ul>
+                </div>
+            </div>
+             <div class="mt-4">
+                <label for="mainHtmlFile" class="block text-sm font-medium text-gray-700 mb-1">Main HTML File</label>
+                <select id="mainHtmlFile" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 disabled:bg-gray-200" disabled>
+                    <option>Upload files to see options</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Step 3: Generate Project -->
+        <div>
+            <button id="generateBtn" class="w-full bg-sky-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-colors disabled:bg-gray-400 flex items-center justify-center" disabled>
+                <svg id="loader" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span id="button-text">Generate Android Project</span>
+            </button>
+        </div>
+        
+        <!-- Instructions Modal -->
+        <div id="instructionsModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center p-4 hidden z-50">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 relative">
+                <button id="closeModal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+                <h2 class="text-2xl font-bold text-gray-900 mb-4">Project Generated!</h2>
+                <p class="text-gray-600 mb-4">Your Android Studio project <strong id="zipFileName"></strong> has been downloaded.</p>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h3 class="font-semibold text-gray-800 mb-2">Next Steps:</h3>
+                    <ol class="list-decimal list-inside space-y-2 text-gray-700">
+                        <li><strong>Unzip</strong> the downloaded file.</li>
+                        <li>Open <strong>Android Studio</strong>.</li>
+                        <li>Click on <strong>"Open"</strong> (or "File" > "Open").</li>
+                        <li>Navigate to and select the unzipped project folder.</li>
+                        <li>Wait for Android Studio to sync the project (it may take a minute).</li>
+                        <li>Click the <strong>Run 'app'</strong> button (green play icon) to build the APK and run it on an emulator or connected device.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DOM Element References ---
+        const appNameInput = document.getElementById('appName');
+        const packageNameInput = document.getElementById('packageName');
+        const packageError = document.getElementById('package-error');
+        const appIconInput = document.getElementById('appIcon');
+        const iconPreview = document.getElementById('iconPreview');
+        const fileInput = document.getElementById('fileInput');
+        const fileDropArea = document.getElementById('fileDropArea');
+        const fileList = document.getElementById('file-list');
+        const fileListUl = fileList.querySelector('ul');
+        const fileUploadPrompt = document.getElementById('file-upload-prompt');
+        const mainHtmlSelect = document.getElementById('mainHtmlFile');
+        const generateBtn = document.getElementById('generateBtn');
+        const loader = document.getElementById('loader');
+        const buttonText = document.getElementById('button-text');
+        const instructionsModal = document.getElementById('instructionsModal');
+        const closeModal = document.getElementById('closeModal');
+        const zipFileNameSpan = document.getElementById('zipFileName');
+
+        let uploadedFiles = [];
+        let uploadedIcon = null;
+
+        // --- Event Listeners ---
+        
+        // File Upload Handling
+        fileDropArea.addEventListener('click', () => fileInput.click());
+        fileDropArea.addEventListener('dragover', (e) => { e.preventDefault(); fileDropArea.classList.add('drag-over'); });
+        fileDropArea.addEventListener('dragleave', () => fileDropArea.classList.remove('drag-over'));
+        fileDropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileDropArea.classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
+        });
+        fileInput.addEventListener('change', () => { if (fileInput.files.length > 0) handleFiles(fileInput.files); });
+        appIconInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleIconUpload(e.target.files[0]); });
+
+        // Input Validation
+        appNameInput.addEventListener('input', validateForm);
+        packageNameInput.addEventListener('input', validateForm);
+        mainHtmlSelect.addEventListener('change', validateForm);
+        
+        // Button and Modal Actions
+        generateBtn.addEventListener('click', generateProject);
+        closeModal.addEventListener('click', () => instructionsModal.classList.add('hidden'));
+
+        // --- Core Functions ---
+        
+        function handleIconUpload(file) {
+            uploadedIcon = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                iconPreview.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function handleFiles(files) {
+            uploadedFiles = Array.from(files);
+            
+            fileListUl.innerHTML = '';
+            uploadedFiles.forEach(file => {
+                const li = document.createElement('li');
+                li.textContent = file.name;
+                fileListUl.appendChild(li);
+            });
+            fileUploadPrompt.classList.add('hidden');
+            fileList.classList.remove('hidden');
+
+            mainHtmlSelect.innerHTML = '';
+            mainHtmlSelect.disabled = false;
+            const htmlFiles = uploadedFiles.filter(f => f.name.endsWith('.html') || f.name.endsWith('.htm'));
+            
+            if (htmlFiles.length === 0) {
+                 mainHtmlSelect.innerHTML = '<option>No HTML files found!</option>';
+                 mainHtmlSelect.disabled = true;
+            } else {
+                htmlFiles.forEach(file => {
+                    const option = document.createElement('option');
+                    option.value = file.name;
+                    option.textContent = file.name;
+                    mainHtmlSelect.appendChild(option);
+                });
+                const indexFile = htmlFiles.find(f => f.name.toLowerCase() === 'index.html');
+                if(indexFile) mainHtmlSelect.value = indexFile.name;
+            }
+            validateForm();
+        }
+
+        function isPackageNameValid() {
+            const packageName = packageNameInput.value;
+            const regex = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/;
+            const isValid = regex.test(packageName);
+            packageError.classList.toggle('hidden', isValid || packageName.length === 0);
+            return isValid;
+        }
+
+        function validateForm() {
+            const isAppNameValid = appNameInput.value.trim() !== '';
+            const isPackageValid = isPackageNameValid();
+            const isFileSelected = uploadedFiles.length > 0;
+            const isHtmlSelected = mainHtmlSelect.value && !mainHtmlSelect.disabled;
+            generateBtn.disabled = !(isAppNameValid && isPackageValid && isFileSelected && isHtmlSelected);
+        }
+
+        async function generateProject() {
+            loader.classList.remove('hidden');
+            buttonText.textContent = 'Generating...';
+            generateBtn.disabled = true;
+
+            try {
+                const zip = new JSZip();
+                const appName = appNameInput.value.trim();
+                const packageName = packageNameInput.value.trim();
+                const mainHtml = mainHtmlSelect.value;
+                const packagePath = packageName.replace(/\./g, '/');
+
+                const assetsFolder = zip.folder("app/src/main/assets");
+                for (const file of uploadedFiles) {
+                    const content = await file.arrayBuffer();
+                    assetsFolder.file(file.name, content);
+                }
+
+                zip.file("app/src/main/AndroidManifest.xml", getAndroidManifest(packageName));
+                zip.folder(`app/src/main/java/${packagePath}`).file("MainActivity.java", getMainActivity(packageName, mainHtml));
+                zip.file("app/build.gradle", getAppBuildGradle(packageName));
+                zip.file("build.gradle", getProjectBuildGradle());
+                zip.file("settings.gradle", getSettingsGradle(appName));
+                zip.file("gradle.properties", getGradleProperties());
+
+                const resFolder = zip.folder("app/src/main/res");
+                const xmlFolder = resFolder.folder("xml");
+                xmlFolder.file("backup_rules.xml", getBackupRulesXml());
+                xmlFolder.file("data_extraction_rules.xml", getDataExtractionRulesXml());
+                
+                resFolder.folder("values").file("strings.xml", getStringsXml(appName));
+                resFolder.folder("values").file("themes.xml", getThemesXml());
+
+                if (uploadedIcon) {
+                    await addCustomIconToZip(zip, uploadedIcon);
+                } else {
+                    addDefaultIconToZip(zip);
+                }
+
+                const content = await zip.generateAsync({ type: "blob" });
+                const zipFileName = `${appName.replace(/\s+/g, '_')}_AndroidProject.zip`;
+                
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(content);
+                link.download = zipFileName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                zipFileNameSpan.textContent = zipFileName;
+                instructionsModal.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error generating project:", error);
+                alert("An error occurred while generating the project. Please check the console for details.");
+            } finally {
+                loader.classList.add('hidden');
+                buttonText.textContent = 'Generate Android Project';
+                validateForm();
+            }
+        }
+
+        // --- Icon Generation ---
+
+        /**
+         * Resizes an image file to a specific dimension and shape.
+         * @param {File} file - The source image file.
+         * @param {number} size - The target width and height.
+         * @param {boolean} round - Whether to make the icon round.
+         * @returns {Promise<Blob>} A promise that resolves with the resized image blob.
+         */
+        function resizeImage(file, size, round = false) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = size;
+                        canvas.height = size;
+                        const ctx = canvas.getContext('2d');
+                        
+                        if (round) {
+                            ctx.beginPath();
+                            ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+                            ctx.closePath();
+                            ctx.clip();
+                        }
+
+                        ctx.drawImage(img, 0, 0, size, size);
+                        canvas.toBlob(resolve, 'image/png');
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function addCustomIconToZip(zip, iconFile) {
+            const sizes = {
+                'mipmap-mdpi': 48,
+                'mipmap-hdpi': 72,
+                'mipmap-xhdpi': 96,
+                'mipmap-xxhdpi': 144,
+                'mipmap-xxxhdpi': 192
+            };
+            
+            for (const [dir, size] of Object.entries(sizes)) {
+                const resFolder = zip.folder(`app/src/main/res/${dir}`);
+                // Create square icon
+                const squareBlob = await resizeImage(iconFile, size, false);
+                resFolder.file('ic_launcher.png', squareBlob);
+                // Create round icon
+                const roundBlob = await resizeImage(iconFile, size, true);
+                resFolder.file('ic_launcher_round.png', roundBlob);
+            }
+             // Also add adaptive icon pointers
+            zip.folder('app/src/main/res/mipmap-anydpi-v26').file('ic_launcher.xml', getAdaptiveIconXml());
+            zip.folder('app/src/main/res/mipmap-anydpi-v26').file('ic_launcher_round.xml', getAdaptiveIconXml(true));
+        }
+
+        function addDefaultIconToZip(zip) {
+            const resFolder = zip.folder("app/src/main/res");
+            resFolder.file("mipmap-anydpi-v26/ic_launcher.xml", getDefaultIcLauncherXml());
+            resFolder.file("mipmap-anydpi-v26/ic_launcher_round.xml", getDefaultIcLauncherRoundXml());
+            resFolder.file("drawable/ic_launcher_background.xml", getIcLauncherBackground());
+            resFolder.file("drawable-v24/ic_launcher_foreground.xml", getIcLauncherForeground());
+        }
+
+        // --- Template Generators ---
+        
+        function getAndroidManifest(packageName) {
+            return `<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="${packageName}">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.App"
+        tools:targetApi="31">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>`;
+        }
+
+        function getMainActivity(packageName, mainHtmlFile) {
+            return `package ${packageName};
+
+import androidx.appcompat.app.AppCompatActivity;
+import android.os.Bundle;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+
+public class MainActivity extends AppCompatActivity {
+    private WebView webView;
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        webView = new WebView(this);
+        setContentView(webView);
+        WebSettings webSettings = webView.getSettings();
+        webSettings.setJavaScriptEnabled(true);
+        webSettings.setDomStorageEnabled(true);
+        webSettings.setAllowFileAccessFromFileURLs(true);
+        webSettings.setAllowUniversalAccessFromFileURLs(true);
+        webView.setWebViewClient(new WebViewClient());
+        webView.loadUrl("file:///android_asset/${mainHtmlFile}");
+    }
+    @Override
+    public void onBackPressed() {
+        if (webView.canGoBack()) {
+            webView.goBack();
+        } else {
+            super.onBackPressed();
+        }
+    }
+}`;
+        }
+
+        function getAppBuildGradle(packageName) {
+            return `plugins { id 'com.android.application' }
+android {
+    namespace '${packageName}'
+    compileSdk 34
+    defaultConfig {
+        applicationId "${packageName}"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    sourceSets { main { res.srcDirs = ['src/main/res'] } }
+}
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+}`;
+        }
+        
+        function getProjectBuildGradle() { return `plugins { id 'com.android.application' version '8.2.0' apply false }`; }
+
+        function getSettingsGradle(appName) {
+            return `pluginManagement {
+    repositories { google(); mavenCentral(); gradlePluginPortal() }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories { google(); mavenCentral() }
+}
+rootProject.name = "${appName}"
+include ':app'`;
+        }
+        
+        function getGradleProperties() { return `android.useAndroidX=true\nandroid.enableJetifier=true`; }
+        function getBackupRulesXml() { return `<?xml version="1.0" encoding="utf-8"?><full-backup-content></full-backup-content>`; }
+        function getDataExtractionRulesXml() { return `<?xml version="1.0" encoding="utf-8"?><data-extraction-rules><cloud-backup><include domain="sharedpref" path="."/><exclude domain="sharedpref" path="device.xml"/></cloud-backup></data-extraction-rules>`; }
+        function getStringsXml(appName) { return `<?xml version="1.0" encoding="utf-8"?><resources><string name="app_name">${appName}</string></resources>`; }
+        function getThemesXml() { return `<?xml version="1.0" encoding="utf-8"?><resources><style name="Theme.App" parent="Theme.AppCompat.Light.NoActionBar"></style></resources>`; }
+        
+        // --- Icon XML Generators ---
+        function getAdaptiveIconXml(round = false) {
+            // This file just points to the pngs we created, which is a way to support adaptive icons without complex vector logic.
+            const drawable = round ? "@mipmap/ic_launcher_round" : "@mipmap/ic_launcher";
+            return `<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@android:color/white"/>
+    <foreground android:drawable="${drawable}"/>
+</adaptive-icon>`;
+        }
+
+        function getDefaultIcLauncherXml() { return `<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@drawable/ic_launcher_background" /><foreground android:drawable="@drawable/ic_launcher_foreground" /></adaptive-icon>`; }
+        function getDefaultIcLauncherRoundXml() { return `<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@drawable/ic_launcher_background" /><foreground android:drawable="@drawable/ic_launcher_foreground" /></adaptive-icon>`; }
+        function getIcLauncherBackground() { return `<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108"><path android:fillColor="#0284c7" android:pathData="M0,0h108v108h-108z"/></vector>`; }
+        function getIcLauncherForeground() { return `<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108"><group android:scaleX="2.61" android:scaleY="2.61" android:translateX="22.68" android:translateY="22.68"><path android:fillColor="#FFFFFF" android:pathData="M19,4H5C3.89,4 3,4.9 3,6v12c0,1.1 0.89,2 2,2h14c1.1,0 2,-0.9 2,-2V6C21,4.9 20.11,4 19,4zM9.5,16.5v-9l7,4.5L9.5,16.5z"/></group></vector>`; }
+
+    </script>
+
+</body>
+</html>
